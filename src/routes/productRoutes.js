@@ -5,8 +5,8 @@ import {
   bulkInsertProducts,
   importExternalProducts,
 } from '../controllers/productController.js';
-import { mapDummyProductsToSchema } from '../utils/productMapper.js';
-import apiService from '../services/externalApiService.js';
+import { mapDummyProductsToSchema } from '../utils/mappers/productMapper.js';
+import ProductService from '../services/ProductService.js';
 
 const router = express.Router();
 
@@ -22,7 +22,7 @@ router.post('/sync-dummy', importExternalProducts);
 // Alternativa para mantener la ruta separada:
 router.post('/sync-legacy', async (req, res, next) => {
   try {
-    const { products } = await apiService.getProducts({ limit: 100 });
+    const { products } = await ProductService.getProducts({ limit: 100 });
     const mappedProducts = mapDummyProductsToSchema(products);
     await bulkInsertProducts({ body: { products: mappedProducts } }, res);
   } catch (error) {

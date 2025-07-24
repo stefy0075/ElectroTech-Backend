@@ -1,10 +1,10 @@
 import Product from '../models/Product.js';
-import ApiResponse from '../utils/ApiResponse.js';
+import ApiResponse from '../utils/api/ApiResponse.js';
 import asyncHandler from '../utils/asyncHandler.js';
-import ApiError from '../utils/ApiError.js';
-import apiService from '../services/externalApiService.js';
-import { mapDummyProductsToSchema } from '../utils/productMapper.js';
-import metrics from '../config/metricsMiddleware.js'; // Opcional para métricas
+import ApiError from '../utils/api/ApiError.js';
+import ProductService from '../services/ProductService.js';
+import { mapDummyProductsToSchema } from '../utils/mappers/productMapper.js';
+import { metrics } from '../monitoring/metricsMiddleware.js';
 
 /**
  * @swagger
@@ -23,10 +23,14 @@ import metrics from '../config/metricsMiddleware.js'; // Opcional para métricas
  *                 $ref: '#/components/schemas/Product'
  */
 const getAllProducts = asyncHandler(async (req, res) => {
-  const products = await Product.find({ active: true }).lean();
-  res
-    .status(200)
-    .json(new ApiResponse(200, products, 'Productos obtenidos exitosamente'));
+  const { limit, offset, category } = req.query;
+  const { products, total } = await ProductService.getProducts({
+    limit,
+    offset,
+    category,
+  });
+
+  res.json(new ApiResponse(200, { products, total }));
 });
 
 /**
@@ -145,24 +149,24 @@ const importExternalProducts = asyncHandler(async (req, res) => {
   session.startTransaction();
 
   try {
-    // Paso 1: Obtener productos de la API externa
+    // Obtiene productos de la API externa
     const { products } = await apiService.getProducts({ limit: 100 });
 
-    // Paso 2: Mapear al schema de la DB
+    // Mapea al schema de la DB
     const mappedProducts = mapDummyProductsToSchema(products);
 
     if (!mappedProducts.length) {
       throw new ApiError(404, 'No se encontraron productos para importar');
     }
 
-    // Paso 3: Transacción atómica (borrar antiguos + insertar nuevos)
+    // Transacción atómica (borrar antiguos + insertar nuevos)
     await Product.deleteMany({ 'metadata.source': 'dummyjson' }).session(
       session
     );
     const result = await Product.insertMany(mappedProducts, { session });
     await session.commitTransaction();
 
-    // Métricas 
+    // Métricas
     if (metrics) {
       metrics.increment('product.import.external', result.length);
       metrics.gauge('product.total.external', result.length);

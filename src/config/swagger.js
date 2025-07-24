@@ -24,7 +24,6 @@ const options = {
 
 const specs = swaggerJsdoc(options);
 
-// Exportación por defecto
 const setupSwagger = (app) => {
   app.use(
     '/api-docs',
