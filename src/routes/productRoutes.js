@@ -4,6 +4,9 @@ import {
   createProduct,
   bulkInsertProducts,
   importExternalProducts,
+  getProductCategories,
+  getDiscountedProducts,
+  applyDiscount,
 } from '../controllers/productController.js';
 import { mapDummyProductsToSchema } from '../utils/mappers/productMapper.js';
 import ProductService from '../services/ProductService.js';
@@ -12,6 +15,18 @@ const router = express.Router();
 
 // GET /api/products -> todos los productos
 router.get('/', getAllProducts);
+
+// GET /api/products/discounted -> productos con descuento
+router.get('/discounted', getDiscountedProducts);
+
+// GET /api/products/categories -> todas las categorías
+router.get('/categories', getProductCategories);
+
+// POST /api/products/bulk ->  Insertar múltiples productos (Admin)
+router.post('/bulk', bulkInsertProducts);
+
+// PATCH /api/products/:id/discount -> Aplicar descuento a un producto específico (Admin)
+router.patch('/:id/discount', applyDiscount);
 
 // POST /api/products -> crear uno (admin)
 router.post('/', createProduct);

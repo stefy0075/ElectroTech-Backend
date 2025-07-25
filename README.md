@@ -8,18 +8,42 @@ Este es un proyecto de backend llamado "mi-backend" que utiliza Express y Mongoo
 
 ```
 mi-backend
-├── src
-│   ├── app.js
-│   ├── controllers
-│   │   └── index.js
-│   ├── models
-│   │   └── index.js
-│   ├── routes
-│   │   └── index.js
-│   └── config
-│       └── index.js
-├── package.json
-└── README.md
+src/
+├── config/
+│ ├── db.js
+│ ├── swagger.js
+│ └── constants.js
+├── controllers/
+│ └── productController.js
+│ └── userController.js #Proximamente
+├── models/
+│ ├── schemas/
+│ │ ├── Product.js
+│ │ ├── User.js #Proximamente
+│ │ └── index.js
+│ ├── Product.js
+│ ├── User.js #Proximamente
+│ └── index.js
+├── monitoring/
+│ ├── metricsMiddleware.js
+│ └── prometheus.js
+├── routes/
+│ └── productRoutes.js
+│ └── usertRoutes.js #Proximamente
+├── scripts/
+│ ├──fetchProducts.mjs
+│ └──uploadToMongoDB.mjs
+├── services/
+│ ├── external/
+│ │ └── DummyJsonService.js
+│ └── ProductService.js
+└── utils/
+├── asyncHandler.js
+├── api/
+│ ├── ApiResponse.js
+│ └── ApiError.js
+└── mappers/
+└── productMapper.js
 ```
 
 ## Instalación
@@ -68,3 +92,10 @@ Este proyecto está bajo la Licencia ISC.
 - **Backend**: Node.js 18+ (ES Modules)
 - **HTTP Client**: Fetch API nativa (zero-dependencies)
 - **Arquitectura**: Servicios separados para consumo de APIs externas
+
+## Migraciones
+
+Si se añaden campos con valores por defecto al modelo Product:
+
+1. Ejecutar el script correspondiente:  
+   `node scripts/migrations/initializeActiveField.js`

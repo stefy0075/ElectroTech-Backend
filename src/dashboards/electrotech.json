@@ -1,0 +1,29 @@
+{
+  "title": "ElectroTech Monitoring",
+  "panels": [
+    {
+      "title": "HTTP Requests",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(electrotech_http_requests_total[1m])",
+          "legendFormat": "{{method}} {{route}}"
+        }
+      ]
+    },
+    {
+      "title": "Response Time",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(electrotech_http_duration_seconds_bucket[1m]))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(electrotech_http_duration_seconds_bucket[1m]))",
+          "legendFormat": "p99"
+        }
+      ]
+    }
+  ]
+}

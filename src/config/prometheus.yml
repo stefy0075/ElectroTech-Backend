@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - './alert.rules.yml'
+
+scrape_configs:
+  - job_name: 'electrotech'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:4000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'electrotech-backend'

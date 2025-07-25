@@ -28,7 +28,7 @@ export default class ProductService {
     });
 
     try {
-      const query = { active: true };
+      const query = {};
       if (category) query.category = category;
 
       const [products, total] = await Promise.all([

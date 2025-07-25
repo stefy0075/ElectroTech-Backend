@@ -1,52 +1,92 @@
 import promClient from 'prom-client';
 import { METRICS_ENABLED } from '../config/constants.js';
 
-// Crea un registro separado para métricas custom
+// Configuración del Registro
 export const registry = new promClient.Registry();
 
-// Métricas de la aplicación
+// Métricas por Defecto
+if (METRICS_ENABLED) {
+  promClient.collectDefaultMetrics({
+    register: registry,
+    prefix: 'electrotech_',
+    timeout: 5000,
+    labels: { app: 'electrotech-backend' },
+  });
+}
+
+// Métricas Personalizadas
 export const apiMetrics = {
-  httpRequestDuration: new promClient.Histogram({
-    name: 'app_http_request_duration_seconds',
-    help: 'Duración de las solicitudes HTTP en segundos',
+  httpRequests: new promClient.Counter({
+    name: 'electrotech_http_requests_total',
+    help: 'Total de requests HTTP',
+    labelNames: ['method', 'route', 'status'],
+    registers: [registry],
+  }),
+  httpDuration: new promClient.Histogram({
+    name: 'electrotech_http_duration_seconds',
+    help: 'Duración de requests HTTP',
     labelNames: ['method', 'route', 'status'],
     buckets: [0.1, 0.5, 1, 2, 5],
     registers: [registry],
   }),
   dbQueryDuration: new promClient.Histogram({
-    name: 'app_db_query_duration_seconds',
-    help: 'Duración de consultas a MongoDB en segundos',
+    name: 'electrotech_db_query_seconds',
+    help: 'Duración de consultas a DB',
     labelNames: ['collection', 'operation'],
     buckets: [0.01, 0.05, 0.1, 0.5, 1],
     registers: [registry],
   }),
+  activeConnections: new promClient.Gauge({
+    name: 'electrotech_active_connections',
+    help: 'Conexiones activas',
+    registers: [registry],
+  }),
 };
 
-// Función para habilitar/deshabilitar métricas
-export const initMetrics = () => {
-  if (METRICS_ENABLED) {
-    promClient.collectDefaultMetrics({
-      register: registry,
-      prefix: 'app_',
-      timeout: 5000,
-    });
-  }
+// Exporta métricas y middleware
+export const metrics = {
+  increment: (name, value = 1, labels = {}) => {
+    if (process.env.METRICS_ENABLED === 'true') {
+      requestCounter.inc(labels, value);
+    }
+  },
+  observeResponseTime: (route, timeInSeconds) => {
+    if (process.env.METRICS_ENABLED === 'true') {
+      apiResponseTime.observe({ route }, timeInSeconds);
+    }
+  },
 };
 
-// Middleware para tracking de requests
-export const trackRequest = (req, res, next) => {
+// Middleware de Métricas
+export const metricsMiddleware = (req, res, next) => {
   if (!METRICS_ENABLED) return next();
 
   const start = Date.now();
-  const timer = apiMetrics.httpRequestDuration.startTimer({
-    method: req.method,
-    route: req.route?.path || req.path,
-  });
+  const route = req.route?.path || req.path;
 
   res.on('finish', () => {
-    timer({ status: res.statusCode });
-    console.log(`Request ${req.method} ${req.path} - ${Date.now() - start}ms`);
+    const duration = (Date.now() - start) / 1000;
+
+    apiMetrics.httpRequests.inc({
+      method: req.method,
+      route,
+      status: res.statusCode,
+    });
+
+    apiMetrics.httpDuration.observe(
+      {
+        method: req.method,
+        route,
+        status: res.statusCode,
+      },
+      duration
+    );
   });
 
   next();
+};
+
+// Función para obtener métricas
+export const getMetrics = async () => {
+  return METRICS_ENABLED ? registry.metrics() : '';
 };

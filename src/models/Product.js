@@ -1,24 +1,66 @@
 import mongoose from 'mongoose';
+import productSchema from './schemas/Product.js';
 
-const productSchema = new mongoose.Schema(
-  {
-    title: { type: String, required: true }, // nombre del producto
-    description: { type: String },
-    price: { type: Number, required: true },
-    category: { type: String, index: true },
-    brand: { type: String },
-    stock: { type: Number, default: 0 },
-    discountPercentage: { type: Number, default: 0 },
-    rating: { type: Number, default: 0 },
-    thumbnail: { type: String }, // imagen principal
-    images: [{ type: String }], // galería
-    // campos personalizados
-    cashDiscount: { type: Boolean, default: false },
-    oldPrice: { type: Number }, // precio tachado
-    active: { type: Boolean, default: true },
+/**
+ * Middlewares/Hooks
+ */
+productSchema.pre('save', function (next) {
+  if (this.isModified('price') && this.oldPrice === undefined) {
+    this.oldPrice = this.price;
+  }
+  next();
+});
+
+/**
+ * Métodos de Instancia
+ */
+productSchema.methods = {
+  applyDiscount(percentage) {
+    if (percentage < 0 || percentage > 100) {
+      throw new Error('El descuento debe estar entre 0 y 100');
+    }
+    this.price = this.price * (1 - percentage / 100);
+    return this.save();
   },
-  { timestamps: true }
-);
 
-const Product = mongoose.model('Product', productSchema);
+  toggleActive() {
+    this.active = !this.active;
+    return this.save();
+  },
+};
+
+/**
+ * Métodos Estáticos
+ */
+productSchema.statics = {
+  async findByCategory(category, options = {}) {
+    const { limit = 10, page = 1 } = options;
+    return this.find({ category })
+      .limit(limit)
+      .skip((page - 1) * limit);
+  },
+
+  async getDiscountedProducts(minDiscount = 5) {
+    return this.find({
+      discountPercentage: { $gte: minDiscount },
+      active: true,
+    });
+  },
+
+  async searchProducts(query) {
+    return this.find(
+      { $text: { $search: query } },
+      { score: { $meta: 'textScore' } }
+    ).sort({ score: { $meta: 'textScore' } });
+  },
+
+  initializeActiveField: async function () {
+    return this.updateMany(
+      { active: { $exists: false } },
+      { $set: { active: true } }
+    );
+  },
+};
+
+const Product = mongoose.model('Product', productSchema, 'products');
 export default Product;

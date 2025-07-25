@@ -3,44 +3,55 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 
+// Configuración
 import setupSwagger from './src/config/swagger.js';
-import { initMetrics, trackRequest } from './src/monitoring/prometheus.js';
-import { metricsMiddleware } from './src/monitoring/metricsMiddleware.js';
-
 import connectDB from './src/config/db.js';
+
+// Métricas
+import {
+  metricsMiddleware,
+  getMetrics,
+  apiMetrics,
+  registry,
+} from './src/monitoring/prometheus.js';
+
+// Rutas
 import productRoutes from './src/routes/productRoutes.js';
 
 dotenv.config();
-
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Métricas
-initMetrics();
-
-setupSwagger(app);
+const PORT = process.env.PORT || 4000;
 
 // Middlewares
 app.use(cors());
 app.use(bodyParser.json());
-app.use(trackRequest);
 app.use(metricsMiddleware);
 
-// DB
+// Conexión a DB
 connectDB();
 
 // Rutas
 app.use('/api/products', productRoutes);
 
+// Endpoint de métricas
 app.get('/metrics', async (req, res) => {
-  res.set('Content-Type', promClient.register.contentType);
-  res.end(await promClient.register.metrics());
+  try {
+    res.set('Content-Type', registry.contentType);
+    res.end(await getMetrics());
+  } catch (err) {
+    res.status(500).end('Error en métricas');
+  }
 });
 
-app.get('/', (req, res) => {
-  res.send('Welcome to mi-backend API');
+// Middleware de conexiones activas
+app.use((req, res, next) => {
+  apiMetrics.activeConnections.inc();
+  res.on('finish', () => apiMetrics.activeConnections.dec());
+  next();
 });
 
+// Inicio
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Servidor en puerto ${PORT}`);
+  console.log(`📊 Métricas en http://localhost:${PORT}/metrics`);
 });

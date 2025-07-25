@@ -1,0 +1,20 @@
+groups:
+  - name: electrotech-alerts
+    rules:
+      - alert: HighLatency
+        expr: histogram_quantile(0.99, sum(rate(electrotech_http_duration_seconds_bucket[1m])) by (le)) > 3
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Alta latencia en {{ $labels.route }}'
+          description: 'Latencia p99 de {{ $value }}s'
+
+      - alert: DatabaseSlowQueries
+        expr: histogram_quantile(0.95, sum(rate(electrotech_db_query_seconds_bucket[1m])) by (le)) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Consultas lentas a DB'
+          description: 'Consultas p95 tomando {{ $value }}s'
