@@ -46,5 +46,5 @@ app.get('/metrics', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Servidor en puerto ${PORT}`);
   console.log(`📊 Métricas en http://localhost:${PORT}/metrics`);
-  console.log(`🩺 Health Check en http://localhost:${PORT}/api/healthcheck`);
+  // console.log(`🩺 Health Check en http://localhost:${PORT}/api/healthcheck`);
 });
