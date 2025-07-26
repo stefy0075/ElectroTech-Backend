@@ -63,6 +63,7 @@ const productSchema = new mongoose.Schema(
     cashDiscount: { type: Boolean, default: false },
     oldPrice: { type: Number },
     active: { type: Boolean, default: true },
+    salesCount: { type: Number, default: 0, index: true },
   },
   {
     timestamps: true,
@@ -73,6 +74,13 @@ const productSchema = new mongoose.Schema(
 // Índices adicionales
 productSchema.index({ title: 'text', description: 'text' }); // Búsqueda por texto
 productSchema.index({ category: 1, brand: 1 }); // Búsqueda por categoría y marca
-productSchema.index({ discountPercentage: 1, active: 1 }); // Busqueda por descuento
+productSchema.index({ active: 1, discountPercentage: -1 }); // Búsqueda por descuento
+productSchema.index({ active: 1, salesCount: -1 }); // Búsqueda por productos mas vendidos
+productSchema.index({ active: 1, cashDiscount: 1 }); // Búsqueda por descuento en efectivo
+
+// índices para búsqueda por tags
+productSchema.index({ tags: 1 }); // Búsqueda básica por tags
+productSchema.index({ active: 1, tags: 1 }); // Búsqueda de activos por tag
+productSchema.index({ active: 1, tags: 1, salesCount: -1 }); // Para mejores ventas por tag
 
 export default productSchema;

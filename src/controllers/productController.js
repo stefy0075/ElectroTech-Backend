@@ -291,7 +291,7 @@ const importExternalProducts = asyncHandler(async (req, res) => {
  *         description: No se encontraron productos con descuento
  */
 const getDiscountedProducts = asyncHandler(async (req, res) => {
-  //Testeado OK
+  // Testeado Ok
   const minDiscount = req.query.min_discount || 5;
   const products = await Product.find({
     discountPercentage: { $gte: Number(minDiscount) },
@@ -305,7 +305,12 @@ const getDiscountedProducts = asyncHandler(async (req, res) => {
     );
   }
 
-  res.json(new ApiResponse(200, products));
+  const total = await Product.countDocuments({
+    discountPercentage: { $gte: Number(minDiscount) },
+    active: true,
+  });
+
+  res.json(new ApiResponse(200, { products, total }));
 });
 
 /**
@@ -349,6 +354,147 @@ const applyDiscount = asyncHandler(async (req, res) => {
 
 /**
  * @swagger
+ * /api/products/cash-discounts:
+ *   get:
+ *     summary: Obtiene productos con descuento en efectivo
+ *     tags: [Products]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 8
+ *     responses:
+ *       200:
+ *         description: Lista de productos con descuento en efectivo
+ */
+const getCashDiscountProducts = asyncHandler(async (req, res) => {
+  // Testeado Ok
+  const limit = parseInt(req.query.limit) || 8;
+  const products = await Product.find({
+    active: true,
+    cashDiscount: true,
+  }).limit(limit);
+
+  const total = await Product.countDocuments({
+    active: true,
+    cashDiscount: true,
+  });
+
+  res.json(new ApiResponse(200, { products, total }));
+});
+
+/**
+ * @swagger
+ * /api/products/special-offers:
+ *   get:
+ *     summary: Obtiene ofertas especiales
+ *     tags: [Products]
+ *     parameters:
+ *       - in: query
+ *         name: minDiscount
+ *         schema:
+ *           type: number
+ *           default: 15
+ *         description: Descuento mínimo requerido
+ *     responses:
+ *       200:
+ *         description: Lista de ofertas especiales
+ */
+const getSpecialOffers = asyncHandler(async (req, res) => {
+  // Testeado Ok
+  const minDiscount = Number(req.query.minDiscount) || 15;
+
+  const [products, total] = await Promise.all([
+    Product.find({
+      active: true,
+      discountPercentage: { $gte: minDiscount },
+      $or: [{ tags: 'special-offer' }, { cashDiscount: true }],
+    }).sort({ discountPercentage: -1 }),
+
+    Product.countDocuments({
+      active: true,
+      discountPercentage: { $gte: minDiscount },
+      $or: [{ tags: 'special-offer' }, { cashDiscount: true }],
+    }),
+  ]);
+
+  res.json(new ApiResponse(200, { products, total }));
+});
+/**
+ * @swagger
+ * /api/products/featured:
+ *   get:
+ *     summary: Obtiene productos destacados (special-offer) ordenados por ventas
+ *     tags: [Products]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Número de página
+ *       - in: query
+ *         name: perPage
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items por página
+ *     responses:
+ *       200:
+ *         description: Lista de productos destacados
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: integer
+ *                   example: 200
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     products:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Product'
+ *                     total:
+ *                       type: integer
+ *                     currentPage:
+ *                       type: integer
+ *                     perPage:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ */
+const getFeaturedProducts = asyncHandler(async (req, res) => {
+  // Testeado Ok
+  const page = parseInt(req.query.page) || 1;
+  const perPage = parseInt(req.query.perPage) || 10;
+
+  const { products, total, totalPages } = await Product.getByTag(
+    'special-offer',
+    { page, perPage },
+    { salesCount: -1 }
+  );
+
+  if (products.length === 0) {
+    throw new ApiError(404, 'No se encontraron productos destacados');
+  }
+
+  res.json(
+    new ApiResponse(200, {
+      products,
+      total,
+      currentPage: page,
+      perPage,
+      totalPages,
+    })
+  );
+});
+
+/**
+ * @swagger
  * /api/products/categories:
  *   get:
  *     summary: Obtiene todas las categorías únicas de productos
@@ -358,9 +504,13 @@ const applyDiscount = asyncHandler(async (req, res) => {
  *         description: Lista de categorías
  */
 const getProductCategories = asyncHandler(async (req, res) => {
+  // Testeado Ok
   const categories = await Product.distinct('category');
-  res.json(new ApiResponse(200, categories));
+  const totalCategories = categories.length;
+
+  res.json(new ApiResponse(200, { categories, total: totalCategories }));
 });
+
 //Agregar filtro active, para publico, en admin no.
 //const getProductCategories = asyncHandler(async (req, res) => {
 //const filter = req.user?.isAdmin ? {} : { active: true }; // Filtra solo si no es admin
@@ -376,4 +526,7 @@ export {
   getDiscountedProducts,
   applyDiscount,
   getProductCategories,
+  getCashDiscountProducts,
+  getSpecialOffers,
+  getFeaturedProducts,
 };

@@ -7,6 +7,9 @@ import {
   getProductCategories,
   getDiscountedProducts,
   applyDiscount,
+  getCashDiscountProducts,
+  getSpecialOffers,
+  getFeaturedProducts,
 } from '../controllers/productController.js';
 import { mapDummyProductsToSchema } from '../utils/mappers/productMapper.js';
 import ProductService from '../services/ProductService.js';
@@ -18,6 +21,15 @@ router.get('/', getAllProducts);
 
 // GET /api/products/discounted -> productos con descuento
 router.get('/discounted', getDiscountedProducts);
+
+// GET /api/products/cashDiscount -> productos con descuento en efectivo
+router.get('/cashDiscount', getCashDiscountProducts);
+
+// GET /api/products/specialOffers -> productos con oferta especial
+router.get('/specialOffers', getSpecialOffers);
+
+// GET /api/products/featured -> productos destacados/mas vendidos
+router.get('/featured', getFeaturedProducts);
 
 // GET /api/products/categories -> todas las categorías
 router.get('/categories', getProductCategories);

@@ -60,6 +60,70 @@ productSchema.statics = {
       { $set: { active: true } }
     );
   },
+
+  // Búsqueda por tags
+  async getByTag(tag, { page = 1, perPage = 10, minSales = 0 } = {}) {
+    const skip = (page - 1) * perPage;
+
+    const [products, total] = await Promise.all([
+      this.find({
+        active: true,
+        tags: tag,
+        salesCount: { $gte: minSales },
+      })
+        .sort({ salesCount: -1 })
+        .skip(skip)
+        .limit(perPage),
+
+      this.countDocuments({
+        active: true,
+        tags: tag,
+        salesCount: { $gte: minSales },
+      }),
+    ]);
+
+    return {
+      products,
+      total,
+      totalPages: Math.ceil(total / perPage),
+      currentPage: page,
+      perPage,
+    };
+  },
+
+  // Versión para múltiples tags
+  async getByTags(
+    tags,
+    { page = 1, perPage = 10, sortBy = 'salesCount', sortOrder = 'desc' } = {}
+  ) {
+    const skip = (page - 1) * perPage;
+    const sort = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
+
+    const [products, total] = await Promise.all([
+      this.find({
+        active: true,
+        tags: { $in: tags },
+      })
+        .sort(sort)
+        .skip(skip)
+        .limit(perPage),
+
+      this.countDocuments({
+        active: true,
+        tags: { $in: tags },
+      }),
+    ]);
+
+    return {
+      products,
+      total,
+      totalPages: Math.ceil(total / perPage),
+      currentPage: page,
+      perPage,
+      sortBy,
+      sortOrder,
+    };
+  },
 };
 
 const Product = mongoose.model('Product', productSchema, 'products');
