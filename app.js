@@ -11,12 +11,11 @@ import connectDB from './src/config/db.js';
 import {
   metricsMiddleware,
   getMetrics,
-  apiMetrics,
   registry,
 } from './src/monitoring/prometheus.js';
 
-// Rutas
-import productRoutes from './src/routes/productRoutes.js';
+// Router principal
+import mainRouter from './src/routes/index.js';
 
 dotenv.config();
 const app = express();
@@ -30,10 +29,10 @@ app.use(metricsMiddleware);
 // Conexión a DB
 connectDB();
 
-// Rutas
-app.use('/api/products', productRoutes);
+// Ruta principal de la API (todas las rutas llevan /api)
+app.use('/api', mainRouter);
 
-// Endpoint de métricas
+// Endpoint de métricas (mantenlo separado)
 app.get('/metrics', async (req, res) => {
   try {
     res.set('Content-Type', registry.contentType);
@@ -43,15 +42,9 @@ app.get('/metrics', async (req, res) => {
   }
 });
 
-// Middleware de conexiones activas
-app.use((req, res, next) => {
-  apiMetrics.activeConnections.inc();
-  res.on('finish', () => apiMetrics.activeConnections.dec());
-  next();
-});
-
 // Inicio
 app.listen(PORT, () => {
   console.log(`🚀 Servidor en puerto ${PORT}`);
   console.log(`📊 Métricas en http://localhost:${PORT}/metrics`);
+  console.log(`🩺 Health Check en http://localhost:${PORT}/api/healthcheck`);
 });
