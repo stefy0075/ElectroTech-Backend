@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 
 // Configuración
 import setupSwagger from './src/config/swagger.js';
@@ -34,21 +35,21 @@ app.use((req, res, next) => {
   next();
 });
 
+// Conexión a la base de datos
+const dbConnection = await connectDB();
+
 // Health Check para Render
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
     timestamp: new Date(),
     uptime: process.uptime(),
-    db: mongoose.connection?.readyState === 1 ? 'Connected' : 'Disconnected', // Opcional
+    db: dbConnection.connection.readyState === 1 ? 'Connected' : 'Disconnected',
   });
 });
 
 // Configuración de Swagger
 setupSwagger(app);
-
-// Conexión a la base de datos
-connectDB();
 
 // Rutas principales
 app.use('/api', mainRouter);
