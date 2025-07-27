@@ -21,18 +21,39 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// Middlewares
+// Middlewares básicos
 app.use(cors());
 app.use(bodyParser.json());
 app.use(metricsMiddleware);
 
-// Conexión a DB
+// Middleware de timeout
+app.use((req, res, next) => {
+  req.setTimeout(10000, () => {
+    res.status(504).json({ error: 'Timeout' });
+  });
+  next();
+});
+
+// Health Check para Render
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date(),
+    uptime: process.uptime(),
+    db: mongoose.connection?.readyState === 1 ? 'Connected' : 'Disconnected', // Opcional
+  });
+});
+
+// Configuración de Swagger
+setupSwagger(app);
+
+// Conexión a la base de datos
 connectDB();
 
-// Ruta principal de la API (todas las rutas llevan /api)
+// Rutas principales
 app.use('/api', mainRouter);
 
-// Endpoint de métricas (mantenlo separado)
+// Endpoint de métricas
 app.get('/metrics', async (req, res) => {
   try {
     res.set('Content-Type', registry.contentType);
@@ -42,9 +63,14 @@ app.get('/metrics', async (req, res) => {
   }
 });
 
-// Inicio
-app.listen(PORT, () => {
+// Inicio del servidor con configuraciones de timeout
+const server = app.listen(PORT, () => {
   console.log(`🚀 Servidor en puerto ${PORT}`);
   console.log(`📊 Métricas en http://localhost:${PORT}/metrics`);
-  // console.log(`🩺 Health Check en http://localhost:${PORT}/api/healthcheck`);
+  console.log(`📚 Swagger UI en http://localhost:${PORT}/api-docs`);
+  console.log(`🩺 Health Check en http://localhost:${PORT}/health`);
 });
+
+// Optimización de conexiones HTTP
+server.keepAliveTimeout = 60000;
+server.headersTimeout = 65000;

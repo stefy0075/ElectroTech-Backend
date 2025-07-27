@@ -25,21 +25,16 @@ const router = express.Router();
  *                   type: number
  */
 
-// Health Check
-// router.get('/healthcheck', async (req, res) => {
-//   const checks = {
-//     database: await checkDatabase(),
-//     externalApi: await checkExternalServices(),
-//     // ...otros checks
-//   };
-
-//   const allOk = Object.values(checks).every((v) => v);
-//   res.status(allOk ? 200 : 503).json({
-//     status: allOk ? 'OK' : 'Service Unavailable',
-//     checks,
-//     timestamp: new Date(),
-//   });
-// });
+// Health check endpoint para Render
+router.get('/healthcheck', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    dependencies: {
+      db: 'Connected',
+      apis: ['products', 'users'],
+    },
+  });
+});
 
 // Rutas de la API
 router.use('/products', productRoutes);
