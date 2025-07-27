@@ -1,14 +1,12 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ debug: false });
 
 const connectDB = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
       serverSelectionTimeoutMS: 5000,
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
     });
     console.log('✅ Conectado a MongoDB Atlas');
     return conn;

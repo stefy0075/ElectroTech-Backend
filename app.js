@@ -18,11 +18,12 @@ import {
 // Router principal
 import mainRouter from './src/routes/index.js';
 
+// Configuración inicial
 dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT;
 
-// Middlewares básicos
+// Middlewares
 app.use(cors());
 app.use(bodyParser.json());
 app.use(metricsMiddleware);
@@ -35,16 +36,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Conexión a la base de datos
-const dbConnection = await connectDB();
-
-// Health Check para Render
+// Health Check
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
     timestamp: new Date(),
     uptime: process.uptime(),
-    db: dbConnection.connection.readyState === 1 ? 'Connected' : 'Disconnected',
+    db: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
   });
 });
 
@@ -64,14 +62,47 @@ app.get('/metrics', async (req, res) => {
   }
 });
 
-// Inicio del servidor con configuraciones de timeout
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Servidor en puerto ${PORT}`);
-  console.log(`📊 Métricas en http://localhost:${PORT}/metrics`);
-  console.log(`📚 Swagger UI en http://localhost:${PORT}/api-docs`);
-  console.log(`🩺 Health Check en http://localhost:${PORT}/health`);
-});
+// Función para iniciar el servidor
+const startServer = async () => {
+  try {
+    await connectDB();
 
-// Optimización de conexiones HTTP
-server.keepAliveTimeout = 60000;
-server.headersTimeout = 65000;
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      const isProduction = process.env.NODE_ENV === 'production';
+      const baseUrl = isProduction
+        ? process.env.RENDER_EXTERNAL_URL
+        : `http://localhost:${PORT}`;
+
+      const line = '═'.repeat(40);
+      console.log(`\n${line}`);
+      console.log(
+        `🚀 Servidor ${isProduction ? 'PRODUCCIÓN' : 'development'} iniciado`
+      );
+      console.log(line);
+      console.log(`🌐 URL Base:      ${baseUrl}`);
+      !isProduction && console.log(`📊 Métricas:      ${baseUrl}/metrics`);
+      console.log(`📚 Documentación: ${baseUrl}/api-docs`);
+      console.log(`🩺 Health Check:  ${baseUrl}/health`);
+      console.log(line + '\n');
+    });
+
+    // Configuración de timeouts
+    server.keepAliveTimeout = 60000;
+    server.headersTimeout = 65000;
+
+    return server;
+  } catch (error) {
+    console.error('⛔ Error al iniciar el servidor:', error);
+    process.exit(1);
+  }
+};
+
+// Iniciar aplicación
+(async () => {
+  try {
+    await startServer();
+  } catch (error) {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  }
+})();
